@@ -1,112 +1,255 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
     public int gridWidth = 6;
-    public int gridHeight = 12;
-    public GameObject blockPrefab;
+    public int gridHeight = 10;
+    public GameObject[] blockPrefabs;
+    public float swipeDistanceThreshold = 0.5f;
+
     private GameObject[,] gridArray;
+    private GameObject selectedBlock = null;
+    private Vector2 startPos, endPos;
 
     void Start()
     {
-        gridArray = new GameObject[gridWidth, gridHeight];
-        CreateGrid();
+        GenerateGrid();
     }
 
-    void CreateGrid()
+    void Update()
     {
+        HandleMouseInput();
+    }
+
+    // Genera la cuadrícula de bloques
+    void GenerateGrid()
+    {
+        gridArray = new GameObject[gridWidth, gridHeight];
+
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)
             {
-                Vector2 position = new Vector2(x, y);
-                GameObject newBlock = Instantiate(blockPrefab, position, Quaternion.identity);
-                newBlock.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y));
-                gridArray[x, y] = newBlock;
+                Vector3 spawnPosition = new Vector3(x, y, 0);
+                GameObject block = Instantiate(GetRandomBlock(x, y), spawnPosition, Quaternion.identity);
+                block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y));
+                gridArray[x, y] = block;
             }
         }
     }
 
-    // Función para intercambiar bloques
-    public void SwapBlocks(Vector2Int currentPos, Vector2Int direction)
+    // Obtiene un bloque aleatorio que evita generar 3 o más piezas idénticas juntas
+    GameObject GetRandomBlock(int x, int y)
     {
-        Vector2Int targetPos = currentPos + direction;
+        List<GameObject> possibleBlocks = new List<GameObject>(blockPrefabs);
 
-        // Comprobar que el intercambio es dentro de los límites de la cuadrícula
-        if (targetPos.x >= 0 && targetPos.x < gridWidth && targetPos.y >= 0 && targetPos.y < gridHeight)
+        // Asegurarse de que no se generan 3 o más bloques iguales en fila
+        if (x > 1 && gridArray[x - 1, y] != null && gridArray[x - 2, y] != null)
         {
-            // Intercambiar bloques
-            GameObject currentBlock = gridArray[currentPos.x, currentPos.y];
-            GameObject targetBlock = gridArray[targetPos.x, targetPos.y];
+            Sprite prevBlock1Sprite = gridArray[x - 1, y].GetComponent<SpriteRenderer>().sprite;
+            Sprite prevBlock2Sprite = gridArray[x - 2, y].GetComponent<SpriteRenderer>().sprite;
 
-            // Actualizar las posiciones de los bloques en la cuadrícula
-            gridArray[currentPos.x, currentPos.y] = targetBlock;
-            gridArray[targetPos.x, targetPos.y] = currentBlock;
-
-            // Actualizar la posición visual de los bloques
-            currentBlock.transform.position = new Vector2(targetPos.x, targetPos.y);
-            targetBlock.transform.position = new Vector2(currentPos.x, currentPos.y);
-
-            // Actualizar las posiciones en los bloques mismos
-            currentBlock.GetComponent<BlockController>().SetGridPosition(targetPos);
-            targetBlock.GetComponent<BlockController>().SetGridPosition(currentPos);
-
-            // Después del swap, podemos chequear si hay alineaciones de bloques (match-3)
-            CheckForMatches();
+            if (prevBlock1Sprite == prevBlock2Sprite)
+            {
+                possibleBlocks.RemoveAll(block => block.GetComponent<SpriteRenderer>().sprite == prevBlock1Sprite);
+            }
         }
+
+        // Asegurarse de que no se generan 3 o más bloques iguales en columna
+        if (y > 1 && gridArray[x, y - 1] != null && gridArray[x, y - 2] != null)
+        {
+            Sprite prevBlock1Sprite = gridArray[x, y - 1].GetComponent<SpriteRenderer>().sprite;
+            Sprite prevBlock2Sprite = gridArray[x, y - 2].GetComponent<SpriteRenderer>().sprite;
+
+            if (prevBlock1Sprite == prevBlock2Sprite)
+            {
+                possibleBlocks.RemoveAll(block => block.GetComponent<SpriteRenderer>().sprite == prevBlock1Sprite);
+            }
+        }
+
+        // Devuelve un bloque aleatorio de los posibles restantes
+        return possibleBlocks[Random.Range(0, possibleBlocks.Count)];
     }
 
-    // Verificación de alineaciones
-    private void CheckForMatches()
+    // Manejador de entrada de ratón para clics y swipe
+    void HandleMouseInput()
     {
-        // Recorremos la cuadrícula para ver si hay alineaciones horizontales o verticales
-        for (int x = 0; x < gridWidth; x++)
+        if (Input.GetMouseButtonDown(0))
         {
-            for (int y = 0; y < gridHeight; y++)
+            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
+
+            if (hit.collider != null)
             {
-                GameObject currentBlock = gridArray[x, y];
-                if (currentBlock != null)
+                GameObject clickedBlock = hit.collider.gameObject;
+
+                if (selectedBlock == null)
                 {
-                    // Chequear alineaciones horizontales
-                    if (x < gridWidth - 2)
+                    // Si no hay un bloque seleccionado, seleccionamos el bloque clicado
+                    selectedBlock = clickedBlock;
+                }
+                else
+                {
+                    // Intentamos intercambiar si ambos bloques son adyacentes
+                    Vector2Int selectedPos = selectedBlock.GetComponent<BlockController>().GetGridPosition();
+                    Vector2Int clickedPos = clickedBlock.GetComponent<BlockController>().GetGridPosition();
+
+                    if (AreBlocksAdjacent(selectedPos, clickedPos))
                     {
-                        GameObject block1 = gridArray[x + 1, y];
-                        GameObject block2 = gridArray[x + 2, y];
-                        if (block1 != null && block2 != null && AreSameColor(currentBlock, block1, block2))
-                        {
-                            Debug.Log("¡Alineación horizontal!");
-                            Destroy(currentBlock);
-                            Destroy(block1);
-                            Destroy(block2);
-                        }
+                        SwapBlocks(selectedPos, clickedPos);
                     }
 
-                    // Chequear alineaciones verticales
-                    if (y < gridHeight - 2)
-                    {
-                        GameObject block1 = gridArray[x, y + 1];
-                        GameObject block2 = gridArray[x, y + 2];
-                        if (block1 != null && block2 != null && AreSameColor(currentBlock, block1, block2))
-                        {
-                            Debug.Log("¡Alineación vertical!");
-                            Destroy(currentBlock);
-                            Destroy(block1);
-                            Destroy(block2);
-                        }
-                    }
+                    // Deseleccionamos el bloque
+                    selectedBlock = null;
                 }
             }
         }
+
+        // Manejamos el swipe
+        if (Input.GetMouseButtonDown(0))
+        {
+            startPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        }
+
+        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
+        {
+            endPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            HandleSwipe();
+            selectedBlock = null;
+        }
     }
 
-    // Verificar si los bloques tienen el mismo color
-    private bool AreSameColor(GameObject block1, GameObject block2, GameObject block3)
+    // Verifica si dos bloques son adyacentes
+    bool AreBlocksAdjacent(Vector2Int pos1, Vector2Int pos2)
     {
-        SpriteRenderer sprite1 = block1.GetComponent<SpriteRenderer>();
-        SpriteRenderer sprite2 = block2.GetComponent<SpriteRenderer>();
-        SpriteRenderer sprite3 = block3.GetComponent<SpriteRenderer>();
-
-        return sprite1.sprite == sprite2.sprite && sprite2.sprite == sprite3.sprite;
+        return (Mathf.Abs(pos1.x - pos2.x) == 1 && pos1.y == pos2.y) || (Mathf.Abs(pos1.y - pos2.y) == 1 && pos1.x == pos2.x);
     }
 
+    // Maneja el swipe entre bloques
+    void HandleSwipe()
+    {
+        Vector2 swipe = endPos - startPos;
+
+        if (swipe.magnitude >= swipeDistanceThreshold)
+        {
+            Vector2Int direction = Vector2Int.zero;
+
+            if (Mathf.Abs(swipe.x) > Mathf.Abs(swipe.y))
+            {
+                direction = swipe.x > 0 ? Vector2Int.right : Vector2Int.left;
+            }
+            else
+            {
+                direction = swipe.y > 0 ? Vector2Int.up : Vector2Int.down;
+            }
+
+            Vector2Int currentBlockPos = selectedBlock.GetComponent<BlockController>().GetGridPosition();
+            Vector2Int targetBlockPos = currentBlockPos + direction;
+
+            if (IsValidPosition(targetBlockPos))
+            {
+                SwapBlocks(currentBlockPos, targetBlockPos);
+            }
+        }
+    }
+
+    // Intercambia dos bloques
+    void SwapBlocks(Vector2Int block1Pos, Vector2Int block2Pos)
+    {
+        if (IsValidPosition(block1Pos) && IsValidPosition(block2Pos))
+        {
+            GameObject block1 = gridArray[block1Pos.x, block1Pos.y];
+            GameObject block2 = gridArray[block2Pos.x, block2Pos.y];
+
+            if (block1 != null && block2 != null)
+            {
+                // Intercambiar en el array
+                gridArray[block1Pos.x, block1Pos.y] = block2;
+                gridArray[block2Pos.x, block2Pos.y] = block1;
+
+                // Intercambiar visualmente las posiciones
+                Vector3 tempPosition = block1.transform.position;
+                block1.transform.position = block2.transform.position;
+                block2.transform.position = tempPosition;
+
+                // Actualizar las posiciones en la cuadrícula
+                block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
+                block2.GetComponent<BlockController>().SetGridPosition(block1Pos);
+
+                // Verificar si hay coincidencias después del intercambio
+                StartCoroutine(CheckMatchesAndDestroy(block1Pos, block2Pos));
+            }
+        }
+    }
+
+    // Verifica si hay coincidencias y destruye bloques si las hay
+    IEnumerator CheckMatchesAndDestroy(Vector2Int pos1, Vector2Int pos2)
+    {
+        yield return new WaitForSeconds(0.1f);
+
+        CheckMatches(pos1);
+        CheckMatches(pos2);
+    }
+
+    // Comprobar las coincidencias (tres o más bloques del mismo tipo en línea)
+    void CheckMatches(Vector2Int blockPos)
+    {
+        List<GameObject> horizontalMatches = FindMatchesInDirection(blockPos, Vector2Int.left);
+        horizontalMatches.AddRange(FindMatchesInDirection(blockPos, Vector2Int.right));
+
+        List<GameObject> verticalMatches = FindMatchesInDirection(blockPos, Vector2Int.up);
+        verticalMatches.AddRange(FindMatchesInDirection(blockPos, Vector2Int.down));
+
+        if (horizontalMatches.Count >= 2)
+        {
+            horizontalMatches.Add(gridArray[blockPos.x, blockPos.y]);
+            foreach (GameObject block in horizontalMatches)
+            {
+                Destroy(block);
+            }
+        }
+
+        if (verticalMatches.Count >= 2)
+        {
+            verticalMatches.Add(gridArray[blockPos.x, blockPos.y]);
+            foreach (GameObject block in verticalMatches)
+            {
+                Destroy(block);
+            }
+        }
+    }
+
+    // Encuentra bloques iguales en una dirección específica
+    List<GameObject> FindMatchesInDirection(Vector2Int startPos, Vector2Int direction)
+    {
+        List<GameObject> matches = new List<GameObject>();
+        Vector2Int checkPos = startPos + direction;
+
+        while (IsValidPosition(checkPos))
+        {
+            GameObject checkBlock = gridArray[checkPos.x, checkPos.y];
+            GameObject startBlock = gridArray[startPos.x, startPos.y];
+
+            if (checkBlock != null && checkBlock.GetComponent<SpriteRenderer>().sprite == startBlock.GetComponent<SpriteRenderer>().sprite)
+            {
+                matches.Add(checkBlock);
+            }
+            else
+            {
+                break;
+            }
+
+            checkPos += direction;
+        }
+
+        return matches;
+    }
+
+    // Verifica si una posición es válida dentro de la cuadrícula
+    bool IsValidPosition(Vector2Int pos)
+    {
+        return pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight;
+    }
 }

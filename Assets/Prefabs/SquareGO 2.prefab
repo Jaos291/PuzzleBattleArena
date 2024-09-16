@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 6151903735512242373}
   - component: {fileID: 2081184593897931327}
   m_Layer: 0
-  m_Name: SquareGO
+  m_Name: SquareGO 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -75,7 +75,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 8eb3538762b8a2f4c93275e5e76be90b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 852a06bf1cdaba44886f359a92b7be4e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
