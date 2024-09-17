@@ -191,6 +191,66 @@ public class GridManager : MonoBehaviour
 
         CheckMatches(pos1);
         CheckMatches(pos2);
+
+        yield return new WaitForSeconds(0.2f);  // Esperamos un poco para que se vea mejor
+
+        HandleBlockFall();  // Hacer que los bloques caigan si hay espacio vacío debajo
+    }
+
+    // Hacer que los bloques caigan si hay espacio vacío debajo
+    void HandleBlockFall()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = 1; y < gridHeight; y++)  // Comenzamos en y = 1 ya que no tiene nada debajo
+            {
+                if (gridArray[x, y] != null)
+                {
+                    int dropDistance = 0;
+
+                    // Contamos cuántos espacios vacíos hay debajo del bloque
+                    for (int checkY = y - 1; checkY >= 0; checkY--)
+                    {
+                        if (gridArray[x, checkY] == null)
+                        {
+                            dropDistance++;
+                        }
+                    }
+
+                    // Si hay espacio vacío debajo, hacemos que el bloque caiga
+                    if (dropDistance > 0)
+                    {
+                        GameObject block = gridArray[x, y];
+                        gridArray[x, y] = null;
+                        gridArray[x, y - dropDistance] = block;
+
+                        // Movemos el bloque visualmente
+                        Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
+                        StartCoroutine(MoveBlock(block, targetPosition));
+
+                        block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
+                    }
+                }
+            }
+        }
+    }
+
+    // Animación de caída de los bloques
+    IEnumerator MoveBlock(GameObject block, Vector3 targetPosition)
+    {
+        float elapsedTime = 0f;
+        float duration = 0.3f;  // Duración de la animación
+
+        Vector3 startPosition = block.transform.position;
+
+        while (elapsedTime < duration)
+        {
+            block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        block.transform.position = targetPosition;
     }
 
     // Comprobar las coincidencias (tres o más bloques del mismo tipo en línea)
