@@ -30,7 +30,7 @@ public class GridManager : MonoBehaviour
 
         for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = 0; y < gridHeight; y++)
+            for (int y = 0; y < gridHeight / 2; y++)
             {
                 Vector3 spawnPosition = new Vector3(x, y, 0);
                 GameObject block = Instantiate(GetRandomBlock(x, y), spawnPosition, Quaternion.identity);
@@ -140,10 +140,10 @@ public class GridManager : MonoBehaviour
             {
                 direction = swipe.x > 0 ? Vector2Int.right : Vector2Int.left;
             }
-            else
+            /*else
             {
                 direction = swipe.y > 0 ? Vector2Int.up : Vector2Int.down;
-            }
+            }*/
 
             Vector2Int currentBlockPos = selectedBlock.GetComponent<BlockController>().GetGridPosition();
             Vector2Int targetBlockPos = currentBlockPos + direction;
@@ -169,19 +169,43 @@ public class GridManager : MonoBehaviour
                 gridArray[block1Pos.x, block1Pos.y] = block2;
                 gridArray[block2Pos.x, block2Pos.y] = block1;
 
-                // Intercambiar visualmente las posiciones
-                Vector3 tempPosition = block1.transform.position;
-                block1.transform.position = block2.transform.position;
-                block2.transform.position = tempPosition;
-
-                // Actualizar las posiciones en la cuadrícula
-                block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
-                block2.GetComponent<BlockController>().SetGridPosition(block1Pos);
-
-                // Verificar si hay coincidencias después del intercambio
-                StartCoroutine(CheckMatchesAndDestroy(block1Pos, block2Pos));
+                // Empezamos la animación de intercambio
+                StartCoroutine(SmoothSwap(block1, block2, block1Pos, block2Pos));
             }
         }
+    }
+
+    // Corrutina para intercambiar bloques suavemente
+    IEnumerator SmoothSwap(GameObject block1, GameObject block2, Vector2Int block1Pos, Vector2Int block2Pos)
+    {
+        float elapsedTime = 0f;
+        float duration = 0.15f;  // Duración de la animación
+
+        Vector3 startPos1 = block1.transform.position;
+        Vector3 startPos2 = block2.transform.position;
+
+        // Animación de intercambio suave
+        while (elapsedTime < duration)
+        {
+            if (block1 != null && block2 != null)  // Verificamos que ambos bloques aún existen
+            {
+                block1.transform.position = Vector3.Lerp(startPos1, startPos2, elapsedTime / duration);
+                block2.transform.position = Vector3.Lerp(startPos2, startPos1, elapsedTime / duration);
+            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // Asegurarnos de que ambos bloques lleguen a la posición final
+        if (block1 != null) block1.transform.position = startPos2;
+        if (block2 != null) block2.transform.position = startPos1;
+
+        // Actualizar las posiciones en la cuadrícula
+        if (block1 != null) block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
+        if (block2 != null) block2.GetComponent<BlockController>().SetGridPosition(block1Pos);
+
+        // Verificar si hay coincidencias después del intercambio
+        StartCoroutine(CheckMatchesAndDestroy(block1Pos, block2Pos));
     }
 
     // Verifica si hay coincidencias y destruye bloques si las hay
@@ -189,10 +213,18 @@ public class GridManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.1f);
 
+        // Verificar si aún existen los bloques antes de intentar operar con ellos
+        GameObject block1 = gridArray[pos1.x, pos1.y];
+        GameObject block2 = gridArray[pos2.x, pos2.y];
+
         CheckMatches(pos1);
         CheckMatches(pos2);
 
         yield return new WaitForSeconds(0.2f);  // Esperamos un poco para que se vea mejor
+
+        // Verificar si aún existen los bloques antes de intentar operar con ellos
+        if (block1 != null) block1.GetComponent<BlockController>().SetGridPosition(pos1);
+        if (block2 != null) block2.GetComponent<BlockController>().SetGridPosition(pos2);
 
         HandleBlockFall();  // Hacer que los bloques caigan si hay espacio vacío debajo
     }
@@ -200,6 +232,8 @@ public class GridManager : MonoBehaviour
     // Hacer que los bloques caigan si hay espacio vacío debajo
     void HandleBlockFall()
     {
+        bool hasFallingBlocks = false;
+
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 1; y < gridHeight; y++)  // Comenzamos en y = 1 ya que no tiene nada debajo
@@ -208,108 +242,174 @@ public class GridManager : MonoBehaviour
                 {
                     int dropDistance = 0;
 
-                    // Contamos cuántos espacios vacíos hay debajo del bloque
-                    for (int checkY = y - 1; checkY >= 0; checkY--)
+                    // Contamos cuántos espacios vacíos hay debajo
+                    while (y - dropDistance - 1 >= 0 && gridArray[x, y - dropDistance - 1] == null)
                     {
-                        if (gridArray[x, checkY] == null)
-                        {
-                            dropDistance++;
-                        }
+                        dropDistance++;
                     }
 
-                    // Si hay espacio vacío debajo, hacemos que el bloque caiga
+                    // Si hay un espacio vacío, hacemos que el bloque caiga
                     if (dropDistance > 0)
                     {
-                        GameObject block = gridArray[x, y];
+                        gridArray[x, y - dropDistance] = gridArray[x, y];
                         gridArray[x, y] = null;
-                        gridArray[x, y - dropDistance] = block;
 
-                        // Movemos el bloque visualmente
                         Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
-                        StartCoroutine(MoveBlock(block, targetPosition));
-
-                        block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
+                        StartCoroutine(SmoothMove(gridArray[x, y - dropDistance], targetPosition));
+                        hasFallingBlocks = true;  // Indicamos que hubo bloques que cayeron
                     }
                 }
             }
         }
+
+        // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
+        if (hasFallingBlocks)
+        {
+            StartCoroutine(CheckForNewMatchesAfterFall());
+        }
     }
 
-    // Animación de caída de los bloques
-    IEnumerator MoveBlock(GameObject block, Vector3 targetPosition)
+    IEnumerator CheckForNewMatchesAfterFall()
+    {
+        // Esperamos a que termine el movimiento de caída
+        yield return new WaitForSeconds(0.2f);
+
+        bool foundNewMatches = false;
+
+        // Recorremos toda la cuadrícula para verificar coincidencias después de que los bloques cayeron
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = 0; y < gridHeight; y++)
+            {
+                if (gridArray[x, y] != null)
+                {
+                    if (CheckMatches(new Vector2Int(x, y)))
+                    {
+                        foundNewMatches = true;
+                    }
+                }
+            }
+        }
+
+        // Si encontramos nuevas coincidencias, hacemos que los bloques caigan de nuevo
+        if (foundNewMatches)
+        {
+            HandleBlockFall();
+        }
+    }
+
+
+    // Corrutina para mover bloques suavemente
+    IEnumerator SmoothMove(GameObject block, Vector3 targetPosition)
     {
         float elapsedTime = 0f;
-        float duration = 0.3f;  // Duración de la animación
+        float duration = 0.15f;  // Duración de la animación de caída
 
         Vector3 startPosition = block.transform.position;
 
         while (elapsedTime < duration)
         {
-            block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
+            if (block != null)  // Verificamos que el bloque aún existe
+            {
+                block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
+            }
             elapsedTime += Time.deltaTime;
             yield return null;
         }
 
-        block.transform.position = targetPosition;
-    }
-
-    // Comprobar las coincidencias (tres o más bloques del mismo tipo en línea)
-    void CheckMatches(Vector2Int blockPos)
-    {
-        List<GameObject> horizontalMatches = FindMatchesInDirection(blockPos, Vector2Int.left);
-        horizontalMatches.AddRange(FindMatchesInDirection(blockPos, Vector2Int.right));
-
-        List<GameObject> verticalMatches = FindMatchesInDirection(blockPos, Vector2Int.up);
-        verticalMatches.AddRange(FindMatchesInDirection(blockPos, Vector2Int.down));
-
-        if (horizontalMatches.Count >= 2)
-        {
-            horizontalMatches.Add(gridArray[blockPos.x, blockPos.y]);
-            foreach (GameObject block in horizontalMatches)
-            {
-                Destroy(block);
-            }
-        }
-
-        if (verticalMatches.Count >= 2)
-        {
-            verticalMatches.Add(gridArray[blockPos.x, blockPos.y]);
-            foreach (GameObject block in verticalMatches)
-            {
-                Destroy(block);
-            }
-        }
-    }
-
-    // Encuentra bloques iguales en una dirección específica
-    List<GameObject> FindMatchesInDirection(Vector2Int startPos, Vector2Int direction)
-    {
-        List<GameObject> matches = new List<GameObject>();
-        Vector2Int checkPos = startPos + direction;
-
-        while (IsValidPosition(checkPos))
-        {
-            GameObject checkBlock = gridArray[checkPos.x, checkPos.y];
-            GameObject startBlock = gridArray[startPos.x, startPos.y];
-
-            if (checkBlock != null && checkBlock.GetComponent<SpriteRenderer>().sprite == startBlock.GetComponent<SpriteRenderer>().sprite)
-            {
-                matches.Add(checkBlock);
-            }
-            else
-            {
-                break;
-            }
-
-            checkPos += direction;
-        }
-
-        return matches;
+        // Asegurarnos de que el bloque llegue a la posición final
+        if (block != null) block.transform.position = targetPosition;
     }
 
     // Verifica si una posición es válida dentro de la cuadrícula
     bool IsValidPosition(Vector2Int pos)
     {
         return pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight;
+    }
+
+    // Verificar coincidencias (matches) para destruir bloques
+    bool CheckMatches(Vector2Int pos)
+    {
+        GameObject block = gridArray[pos.x, pos.y];
+        if (block == null) return false;
+
+        SpriteRenderer spriteRenderer = block.GetComponent<SpriteRenderer>();
+        List<Vector2Int> horizontalMatches = new List<Vector2Int>();
+        List<Vector2Int> verticalMatches = new List<Vector2Int>();
+
+        // Buscar coincidencias horizontales
+        horizontalMatches.Add(pos);
+        for (int i = pos.x - 1; i >= 0; i--)
+        {
+            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            {
+                horizontalMatches.Add(new Vector2Int(i, pos.y));
+            }
+            else
+            {
+                break;
+            }
+        }
+        for (int i = pos.x + 1; i < gridWidth; i++)
+        {
+            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            {
+                horizontalMatches.Add(new Vector2Int(i, pos.y));
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Buscar coincidencias verticales
+        verticalMatches.Add(pos);
+        for (int i = pos.y - 1; i >= 0; i--)
+        {
+            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            {
+                verticalMatches.Add(new Vector2Int(pos.x, i));
+            }
+            else
+            {
+                break;
+            }
+        }
+        for (int i = pos.y + 1; i < gridHeight; i++)
+        {
+            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            {
+                verticalMatches.Add(new Vector2Int(pos.x, i));
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        bool matchFound = false;
+
+        // Si hay 3 o más coincidencias horizontales o verticales, destruimos los bloques
+        if (horizontalMatches.Count >= 3)
+        {
+            foreach (Vector2Int match in horizontalMatches)
+            {
+                Destroy(gridArray[match.x, match.y]);
+                gridArray[match.x, match.y] = null;
+            }
+            matchFound = true;
+        }
+
+        if (verticalMatches.Count >= 3)
+        {
+            foreach (Vector2Int match in verticalMatches)
+            {
+                Destroy(gridArray[match.x, match.y]);
+                gridArray[match.x, match.y] = null;
+            }
+            matchFound = true;
+        }
+
+        return matchFound;
     }
 }
