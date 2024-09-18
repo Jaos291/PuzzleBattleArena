@@ -13,6 +13,11 @@ public class GridManager : MonoBehaviour
     private GameObject selectedBlock = null;
     private Vector2 startPos, endPos;
 
+    public float riseSpeed = 0.125f; // Velocidad a la que sube el grid (0.125 unidades por segundo)
+    private float gridOffset = 0f;   // Desplazamiento actual de la cuadrícula
+    public int maxVisibleRows = 10;  // Número máximo de filas visibles en pantalla
+
+
     void Start()
     {
         GenerateGrid();
@@ -21,7 +26,85 @@ public class GridManager : MonoBehaviour
     void Update()
     {
         HandleMouseInput();
+
+        // Subir el grid a una velocidad constante
+        if (!IsGridAtTop())
+        {
+            gridOffset += riseSpeed * Time.deltaTime;
+
+            // Si el offset llega a 1, entonces hemos subido una unidad completa y es momento de añadir una nueva línea
+            if (gridOffset >= 1f)
+            {
+                gridOffset = 0f;
+                AddNewLine();
+            }
+
+            // Actualizar la posición de los bloques
+            UpdateBlockPositions();
+        }
     }
+
+    // Verifica si el grid ha llegado al tope superior
+    bool IsGridAtTop()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+            if (gridArray[x, gridHeight - 1] != null)
+            {
+                return true; // Si alguna celda en la fila superior está ocupada, llegamos al tope
+            }
+        }
+        return false;
+    }
+
+    // Actualiza la posición de todos los bloques según el offset del grid
+    void UpdateBlockPositions()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = 0; y < gridHeight; y++)
+            {
+                if (gridArray[x, y] != null)
+                {
+                    Vector3 newPosition = new Vector3(x, y + gridOffset, 0);
+                    gridArray[x, y].transform.position = newPosition;
+
+                    // Si el bloque está en la fila 1 o más arriba, hacerlo usable
+                    if (y + gridOffset >= 1 && !gridArray[x, y].GetComponent<BlockController>().IsUsable())
+                    {
+                        gridArray[x, y].GetComponent<BlockController>().SetUsable(true);
+                        gridArray[x, y].GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 1f); // Volverlo visible
+                    }
+                }
+            }
+        }
+    }
+
+    void AddNewLine()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+            // Subir todas las filas hacia arriba
+            for (int y = gridHeight - 1; y > 0; y--)
+            {
+                gridArray[x, y] = gridArray[x, y - 1];
+                if (gridArray[x, y] != null)
+                {
+                    gridArray[x, y].GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y));
+                }
+            }
+
+            // Generar una nueva fila en la parte inferior
+            GameObject newBlock = Instantiate(GetRandomBlock(x, 0), new Vector3(x, 0, 0), Quaternion.identity);
+            newBlock.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, 0));
+            gridArray[x, 0] = newBlock;
+
+            // Marcar el bloque como no usable hasta que suba
+            newBlock.GetComponent<BlockController>().SetUsable(false);
+            newBlock.GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 0.5f); // Hacerlo opaco
+        }
+    }
+
 
     // Genera la cuadrícula de bloques
     void GenerateGrid()
@@ -30,12 +113,16 @@ public class GridManager : MonoBehaviour
 
         for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = 0; y < gridHeight / 2; y++)
+            for (int y = 0; y < (gridHeight / 2)+1; y++)
             {
                 Vector3 spawnPosition = new Vector3(x, y, 0);
                 GameObject block = Instantiate(GetRandomBlock(x, y), spawnPosition, Quaternion.identity);
                 block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y));
                 gridArray[x, y] = block;
+                if (y.Equals(0))
+                {
+                    block.GetComponent<BlockController>().SetUsable(false);
+                }
             }
         }
     }
@@ -163,16 +250,34 @@ public class GridManager : MonoBehaviour
             GameObject block1 = gridArray[block1Pos.x, block1Pos.y];
             GameObject block2 = gridArray[block2Pos.x, block2Pos.y];
 
+
             if (block1 != null && block2 != null)
             {
-                // Intercambiar en el array
-                gridArray[block1Pos.x, block1Pos.y] = block2;
-                gridArray[block2Pos.x, block2Pos.y] = block1;
+                if (BlockIsUsable(block1) && BlockIsUsable(block2))
+                {
+                    // Intercambiar en el array
+                    gridArray[block1Pos.x, block1Pos.y] = block2;
+                    gridArray[block2Pos.x, block2Pos.y] = block1;
 
-                // Empezamos la animación de intercambio
-                StartCoroutine(SmoothSwap(block1, block2, block1Pos, block2Pos));
+                    // Empezamos la animación de intercambio
+                    StartCoroutine(SmoothSwap(block1, block2, block1Pos, block2Pos));
+                }
             }
         }
+    }
+
+    bool BlockIsUsable(GameObject block)
+    {
+        BlockController blockController = block.GetComponent<BlockController>();
+
+        bool canMove = false;
+
+        if (blockController.IsUsable())
+        {
+            canMove = true;
+        }
+
+        return canMove;
     }
 
     // Corrutina para intercambiar bloques suavemente
