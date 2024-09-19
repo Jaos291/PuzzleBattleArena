@@ -426,9 +426,9 @@ MonoBehaviour:
   swipeDistanceThreshold: 0.5
   riseSpeed: 0.375
   maxVisibleRows: 10
-  fallDelay: 0.45
+  fallDelay: 0.3
   cubesWaitTime: 0.1
-  fallSpeed: 0.25
+  fallSpeed: 0.2
 --- !u!4 &1345373940
 Transform:
   m_ObjectHideFlags: 0
