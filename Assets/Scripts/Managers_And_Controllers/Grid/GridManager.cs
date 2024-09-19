@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class GridManager : MonoBehaviour
 {
@@ -17,7 +18,8 @@ public class GridManager : MonoBehaviour
     private float gridOffset = 0f;   // Desplazamiento actual de la cuadrícula
     public int maxVisibleRows = 10;  // Número máximo de filas visibles en pantalla
     public float fallDelay; // Retraso antes de que los bloques comiencen a caer
-    public float waitTime; // Retraso entre cada figura para desaparecer
+    public float cubesWaitTime; // Retraso entre cada figura para desaparecer
+    public float fallSpeed;
 
     private float _riseSpeedHolder;
 
@@ -335,11 +337,11 @@ public class GridManager : MonoBehaviour
         if (block1 != null) block1.GetComponent<BlockController>().SetGridPosition(pos1);
         if (block2 != null) block2.GetComponent<BlockController>().SetGridPosition(pos2);
 
-        HandleBlockFall();  // Hacer que los bloques caigan si hay espacio vacío debajo
+        StartCoroutine(HandleBlockFall());  // Hacer que los bloques caigan si hay espacio vacío debajo
     }
 
     // Hacer que los bloques caigan si hay espacio vacío debajo
-    void HandleBlockFall(List<GameObject> blocksToDestroy = null)
+    IEnumerator HandleBlockFall(List<GameObject> blocksToDestroy = null)
     {
         if (blocksToDestroy != null)
         {
@@ -369,7 +371,7 @@ public class GridManager : MonoBehaviour
                             GameObject block = gridArray[x, y];
                             gridArray[x, y] = null;
                             Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
-                            StartCoroutine(SmoothMove(block, targetPosition, fallDelay));
+                            StartCoroutine(SmoothFall(block, targetPosition, fallSpeed));
                             gridArray[x, y - dropDistance] = block;
                             block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
 
@@ -379,23 +381,26 @@ public class GridManager : MonoBehaviour
                 }
             }
 
+            yield return new WaitForSeconds(fallDelay+0.2f);
+
+            riseSpeed = _riseSpeedHolder;
+
             // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
             if (hasFallingBlocks)
             {
                 StartCoroutine(CheckForNewMatchesAfterFall());
             }
 
-            riseSpeed = _riseSpeedHolder;
         }
     }
 
     private IEnumerator HandleBlockFallAfterDestruction(List<GameObject> blocksToDestroy)
     {
         // Esperamos a que todos los bloques se destruyan antes de permitir que caigan los superiores
-        yield return new WaitForSeconds(waitTime * blocksToDestroy.Count);  // Aseguramos que esperamos el tiempo adecuado para la destrucción secuencial
+        yield return new WaitForSeconds(fallDelay /** blocksToDestroy.Count*/);  // Aseguramos que esperamos el tiempo adecuado para la destrucción secuencial
 
         // Luego llamamos al código que maneja la caída de bloques
-        HandleBlockFall();
+        StartCoroutine(HandleBlockFall());
     }
 
 
@@ -425,14 +430,32 @@ public class GridManager : MonoBehaviour
         // Si encontramos nuevas coincidencias, hacemos que los bloques caigan de nuevo
         if (foundNewMatches)
         {
-            HandleBlockFall();
+            StartCoroutine(HandleBlockFall());
         }
     }
 
 
     // Corrutina para mover bloques suavemente
-    // Corrutina para mover bloques suavemente
     IEnumerator SmoothMove(GameObject block, Vector3 targetPosition, float duration)
+    {
+        float elapsedTime = 0f;
+        Vector3 startPosition = block.transform.position;
+
+        while (elapsedTime < duration)
+        {
+            if (block != null)  // Verificamos que el bloque aún existe
+            {
+                block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
+            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // Asegurarnos de que el bloque llegue a la posición final
+        if (block != null) block.transform.position = targetPosition;
+    }
+
+    IEnumerator SmoothFall(GameObject block, Vector3 targetPosition, float duration)
     {
         float elapsedTime = 0f;
         Vector3 startPosition = block.transform.position;
@@ -564,6 +587,7 @@ public class GridManager : MonoBehaviour
 
         if (matchFound)
         {
+            riseSpeed = 0;
             StartCoroutine(DestroyBlocksInSequence(blocksToDestroy));
         }
 
@@ -572,19 +596,17 @@ public class GridManager : MonoBehaviour
 
     private IEnumerator DestroyBlocksInSequence(List<GameObject> blocksToDestroy)
     {
-        riseSpeed = 0;
-
         foreach (var block in blocksToDestroy)
         {
             if (block != null)
             {
                 // Apagar el sprite antes de destruir
                 block.GetComponent<SpriteRenderer>().enabled = false;
-
-                // Esperar un breve periodo antes de destruir el siguiente bloque
-                yield return new WaitForSeconds(waitTime);
+                yield return new WaitForSeconds(cubesWaitTime);
             }
         }
+
+        // Esperar un breve periodo antes de destruir los bloques
 
         // Destruir los bloques después del delay
         foreach (var block in blocksToDestroy)
@@ -595,8 +617,13 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        // Una vez que todos los bloques han sido destruidos, permitimos que los bloques caigan
-        HandleBlockFall();
+        // Esperar a que todos los bloques hayan sido destruidos antes de permitir que los bloques caigan
+        while (blocksToDestroy.Any(block => block != null))
+        {
+            yield return null;
+        }
 
+        // Una vez que todos los bloques han sido destruidos, permitimos que los bloques caigan
+        StartCoroutine(HandleBlockFall());
     }
 }
