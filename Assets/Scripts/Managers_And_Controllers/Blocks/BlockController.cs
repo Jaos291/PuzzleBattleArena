@@ -8,6 +8,7 @@ public class BlockController : MonoBehaviour
     public BlockType blockType; // Tipo de bloque
 
     private Vector2Int gridPosition;
+    private bool isDissapearing = false;
 
     private bool isUsable = true; // Los bloques por defecto serán usables al inicio
     void Start()
@@ -39,5 +40,25 @@ public class BlockController : MonoBehaviour
     public Vector2Int GetGridPosition()
     {
         return gridPosition;
+    }
+
+    public void SetDissapearing(bool dissapearing)
+    {
+        isDissapearing = dissapearing;
+        if (isDissapearing)
+        {
+            // Cambiar el color a un tono más blanco
+            GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 0.25f); // Puedes ajustar el color si es necesario
+        }
+        else
+        {
+            // Restaurar el color original
+            GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 1f); // Color original o ajustado
+        }
+    }
+
+    public bool IsDissapearing()
+    {
+        return isDissapearing;
     }
 }

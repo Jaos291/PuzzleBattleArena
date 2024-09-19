@@ -16,6 +16,8 @@ public class GridManager : MonoBehaviour
     public float riseSpeed = 0.125f; // Velocidad a la que sube el grid (0.125 unidades por segundo)
     private float gridOffset = 0f;   // Desplazamiento actual de la cuadrícula
     public int maxVisibleRows = 10;  // Número máximo de filas visibles en pantalla
+    public float fallDelay; // Retraso antes de que los bloques comiencen a caer
+    public float waitTime; // Retraso entre cada figura para desaparecer
 
 
     void Start()
@@ -113,7 +115,7 @@ public class GridManager : MonoBehaviour
 
         for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = 0; y < (gridHeight / 2)+1; y++)
+            for (int y = 0; y < (gridHeight / 2) + 1; y++)
             {
                 Vector3 spawnPosition = new Vector3(x, y, 0);
                 GameObject block = Instantiate(GetRandomBlock(x, y), spawnPosition, Quaternion.identity);
@@ -356,11 +358,13 @@ public class GridManager : MonoBehaviour
                     // Si hay un espacio vacío, hacemos que el bloque caiga
                     if (dropDistance > 0)
                     {
-                        gridArray[x, y - dropDistance] = gridArray[x, y];
+                        GameObject block = gridArray[x, y];
                         gridArray[x, y] = null;
-
                         Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
-                        StartCoroutine(SmoothMove(gridArray[x, y - dropDistance], targetPosition));
+                        StartCoroutine(SmoothMove(block, targetPosition, fallDelay));
+                        gridArray[x, y - dropDistance] = block;
+                        block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
+
                         hasFallingBlocks = true;  // Indicamos que hubo bloques que cayeron
                     }
                 }
@@ -373,6 +377,8 @@ public class GridManager : MonoBehaviour
             StartCoroutine(CheckForNewMatchesAfterFall());
         }
     }
+
+
 
     IEnumerator CheckForNewMatchesAfterFall()
     {
@@ -405,11 +411,10 @@ public class GridManager : MonoBehaviour
 
 
     // Corrutina para mover bloques suavemente
-    IEnumerator SmoothMove(GameObject block, Vector3 targetPosition)
+    // Corrutina para mover bloques suavemente
+    IEnumerator SmoothMove(GameObject block, Vector3 targetPosition, float duration)
     {
         float elapsedTime = 0f;
-        float duration = 0.15f;  // Duración de la animación de caída
-
         Vector3 startPosition = block.transform.position;
 
         while (elapsedTime < duration)
@@ -425,6 +430,7 @@ public class GridManager : MonoBehaviour
         // Asegurarnos de que el bloque llegue a la posición final
         if (block != null) block.transform.position = targetPosition;
     }
+
 
     // Verifica si una posición es válida dentro de la cuadrícula
     bool IsValidPosition(Vector2Int pos)
@@ -494,13 +500,20 @@ public class GridManager : MonoBehaviour
 
         bool matchFound = false;
 
-        // Si hay 3 o más coincidencias horizontales o verticales, destruimos los bloques
+        // Si hay 3 o más coincidencias horizontales o verticales, marcar los bloques para desaparecer
+        List<GameObject> blocksToDestroy = new List<GameObject>();
+
         if (horizontalMatches.Count >= 3)
         {
             foreach (Vector2Int match in horizontalMatches)
             {
-                Destroy(gridArray[match.x, match.y]);
-                gridArray[match.x, match.y] = null;
+                GameObject matchedBlock = gridArray[match.x, match.y];
+                if (matchedBlock != null)
+                {
+                    blocksToDestroy.Add(matchedBlock);
+                    gridArray[match.x, match.y] = null;
+                    matchedBlock.GetComponent<BlockController>().SetDissapearing(true);
+                }
             }
             matchFound = true;
         }
@@ -509,12 +522,47 @@ public class GridManager : MonoBehaviour
         {
             foreach (Vector2Int match in verticalMatches)
             {
-                Destroy(gridArray[match.x, match.y]);
-                gridArray[match.x, match.y] = null;
+                GameObject matchedBlock = gridArray[match.x, match.y];
+                if (matchedBlock != null && !blocksToDestroy.Contains(matchedBlock))
+                {
+                    blocksToDestroy.Add(matchedBlock);
+                    gridArray[match.x, match.y] = null;
+                    matchedBlock.GetComponent<BlockController>().SetDissapearing(true);
+                }
             }
             matchFound = true;
         }
 
+        if (matchFound)
+        {
+            StartCoroutine(DestroyBlocksInSequence(blocksToDestroy));
+        }
+
         return matchFound;
     }
+
+    private IEnumerator DestroyBlocksInSequence(List<GameObject> blocksToDestroy)
+    {
+        foreach (var block in blocksToDestroy)
+        {
+            if (block != null)
+            {
+                // Apagar el sprite antes de destruir
+                block.GetComponent<SpriteRenderer>().enabled = false;
+
+                // Esperar un breve periodo antes de destruir el siguiente bloque
+                yield return new WaitForSeconds(waitTime);
+            }
+        }
+
+        // Destruir los bloques después del delay
+        foreach (var block in blocksToDestroy)
+        {
+            if (block != null)
+            {
+                Destroy(block);
+            }
+        }
+    }
+
 }
