@@ -4,24 +4,50 @@ using UnityEngine;
 
 public class BlockController : MonoBehaviour
 {
-    public enum BlockType { Red, Blue, Green, Yellow, Purple }; // Diferentes tipos de bloques
+    public enum BlockType { Red, Blue, Green, Yellow, Purple, White }; // Diferentes tipos de bloques
     public BlockType blockType; // Tipo de bloque
 
     private Vector2Int gridPosition;
     private bool isDissapearing = false;
 
     private bool isUsable = true; // Los bloques por defecto serán usables al inicio
-    void Start()
+    private SpriteRenderer spriteRenderer;
+
+    private void Awake()
     {
-        // Asegúrate de tener una referencia al SpriteRenderer para cambiar su color cuando sea necesario
-        GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, isUsable ? 1f : 0.5f);
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
+    void Start()
+    {
+        
+        UpdateColor(); // Actualiza el color al inicio basado en usabilidad
+    }
+
+    // Método para actualizar el color del bloque según su estado de usabilidad
+    private void UpdateColor()
+    {
+        if (isUsable)
+        {
+            spriteRenderer.color = new Color(1, 1, 1, 1f); // Color normal si es usable
+        }
+        else
+        {
+            spriteRenderer.color = new Color(1, 1, 1, 0.5f); // Color semitransparente si no es usable
+        }
+    }
 
     // Método para marcar si el bloque es usable o no
     public void SetUsable(bool usable)
     {
         isUsable = usable;
+        UpdateColor(); // Actualiza el color cuando cambie la usabilidad
+
+        if (isUsable)
+        {
+            // Referencia a GridManager para verificar coincidencias
+            GameController.Instance.gridManager.CheckMatches(gridPosition);
+        }
     }
 
     // Método para verificar si el bloque es usable
@@ -47,13 +73,11 @@ public class BlockController : MonoBehaviour
         isDissapearing = dissapearing;
         if (isDissapearing)
         {
-            // Cambiar el color a un tono más blanco
-            GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 0.25f); // Puedes ajustar el color si es necesario
+            spriteRenderer.color = new Color(1, 1, 1, 0.25f); // Color semitransparente cuando desaparece
         }
         else
         {
-            // Restaurar el color original
-            GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 1f); // Color original o ajustado
+            spriteRenderer.color = new Color(1, 1, 1, 1f); // Color normal cuando no desaparece
         }
     }
 

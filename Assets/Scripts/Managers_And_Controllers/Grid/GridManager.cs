@@ -19,9 +19,12 @@ public class GridManager : MonoBehaviour
     public float fallDelay; // Retraso antes de que los bloques comiencen a caer
     public float waitTime; // Retraso entre cada figura para desaparecer
 
+    private float _riseSpeedHolder;
+
 
     void Start()
     {
+        _riseSpeedHolder = riseSpeed;
         GenerateGrid();
     }
 
@@ -75,7 +78,6 @@ public class GridManager : MonoBehaviour
                     if (y + gridOffset >= 1 && !gridArray[x, y].GetComponent<BlockController>().IsUsable())
                     {
                         gridArray[x, y].GetComponent<BlockController>().SetUsable(true);
-                        gridArray[x, y].GetComponent<SpriteRenderer>().color = new Color(1, 1, 1, 1f); // Volverlo visible
                     }
                 }
             }
@@ -337,45 +339,63 @@ public class GridManager : MonoBehaviour
     }
 
     // Hacer que los bloques caigan si hay espacio vacío debajo
-    void HandleBlockFall()
+    void HandleBlockFall(List<GameObject> blocksToDestroy = null)
     {
-        bool hasFallingBlocks = false;
-
-        for (int x = 0; x < gridWidth; x++)
+        if (blocksToDestroy != null)
         {
-            for (int y = 1; y < gridHeight; y++)  // Comenzamos en y = 1 ya que no tiene nada debajo
+            StartCoroutine(HandleBlockFallAfterDestruction(blocksToDestroy));
+        }
+        else
+        {
+            bool hasFallingBlocks = false;
+
+            for (int x = 0; x < gridWidth; x++)
             {
-                if (gridArray[x, y] != null)
+                for (int y = 1; y < gridHeight; y++)  // Comenzamos en y = 1 ya que no tiene nada debajo
                 {
-                    int dropDistance = 0;
-
-                    // Contamos cuántos espacios vacíos hay debajo
-                    while (y - dropDistance - 1 >= 0 && gridArray[x, y - dropDistance - 1] == null)
+                    if (gridArray[x, y] != null)
                     {
-                        dropDistance++;
-                    }
+                        int dropDistance = 0;
 
-                    // Si hay un espacio vacío, hacemos que el bloque caiga
-                    if (dropDistance > 0)
-                    {
-                        GameObject block = gridArray[x, y];
-                        gridArray[x, y] = null;
-                        Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
-                        StartCoroutine(SmoothMove(block, targetPosition, fallDelay));
-                        gridArray[x, y - dropDistance] = block;
-                        block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
+                        // Contamos cuántos espacios vacíos hay debajo
+                        while (y - dropDistance - 1 >= 0 && gridArray[x, y - dropDistance - 1] == null)
+                        {
+                            dropDistance++;
+                        }
 
-                        hasFallingBlocks = true;  // Indicamos que hubo bloques que cayeron
+                        // Si hay un espacio vacío, hacemos que el bloque caiga
+                        if (dropDistance > 0)
+                        {
+                            GameObject block = gridArray[x, y];
+                            gridArray[x, y] = null;
+                            Vector3 targetPosition = new Vector3(x, y - dropDistance, 0);
+                            StartCoroutine(SmoothMove(block, targetPosition, fallDelay));
+                            gridArray[x, y - dropDistance] = block;
+                            block.GetComponent<BlockController>().SetGridPosition(new Vector2Int(x, y - dropDistance));
+
+                            hasFallingBlocks = true;  // Indicamos que hubo bloques que cayeron
+                        }
                     }
                 }
             }
-        }
 
-        // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
-        if (hasFallingBlocks)
-        {
-            StartCoroutine(CheckForNewMatchesAfterFall());
+            // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
+            if (hasFallingBlocks)
+            {
+                StartCoroutine(CheckForNewMatchesAfterFall());
+            }
+
+            riseSpeed = _riseSpeedHolder;
         }
+    }
+
+    private IEnumerator HandleBlockFallAfterDestruction(List<GameObject> blocksToDestroy)
+    {
+        // Esperamos a que todos los bloques se destruyan antes de permitir que caigan los superiores
+        yield return new WaitForSeconds(waitTime * blocksToDestroy.Count);  // Aseguramos que esperamos el tiempo adecuado para la destrucción secuencial
+
+        // Luego llamamos al código que maneja la caída de bloques
+        HandleBlockFall();
     }
 
 
@@ -439,10 +459,15 @@ public class GridManager : MonoBehaviour
     }
 
     // Verificar coincidencias (matches) para destruir bloques
-    bool CheckMatches(Vector2Int pos)
+    public bool CheckMatches(Vector2Int pos)
     {
         GameObject block = gridArray[pos.x, pos.y];
         if (block == null) return false;
+
+        BlockController blockController = block.GetComponent<BlockController>();
+
+        // Verificar si el bloque es usable
+        if (!blockController.IsUsable()) return false;
 
         SpriteRenderer spriteRenderer = block.GetComponent<SpriteRenderer>();
         List<Vector2Int> horizontalMatches = new List<Vector2Int>();
@@ -452,7 +477,8 @@ public class GridManager : MonoBehaviour
         horizontalMatches.Add(pos);
         for (int i = pos.x - 1; i >= 0; i--)
         {
-            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<BlockController>().IsUsable() &&
+                gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
             {
                 horizontalMatches.Add(new Vector2Int(i, pos.y));
             }
@@ -463,7 +489,8 @@ public class GridManager : MonoBehaviour
         }
         for (int i = pos.x + 1; i < gridWidth; i++)
         {
-            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            if (gridArray[i, pos.y] != null && gridArray[i, pos.y].GetComponent<BlockController>().IsUsable() &&
+                gridArray[i, pos.y].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
             {
                 horizontalMatches.Add(new Vector2Int(i, pos.y));
             }
@@ -477,7 +504,8 @@ public class GridManager : MonoBehaviour
         verticalMatches.Add(pos);
         for (int i = pos.y - 1; i >= 0; i--)
         {
-            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<BlockController>().IsUsable() &&
+                gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
             {
                 verticalMatches.Add(new Vector2Int(pos.x, i));
             }
@@ -488,7 +516,8 @@ public class GridManager : MonoBehaviour
         }
         for (int i = pos.y + 1; i < gridHeight; i++)
         {
-            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
+            if (gridArray[pos.x, i] != null && gridArray[pos.x, i].GetComponent<BlockController>().IsUsable() &&
+                gridArray[pos.x, i].GetComponent<SpriteRenderer>().sprite == spriteRenderer.sprite)
             {
                 verticalMatches.Add(new Vector2Int(pos.x, i));
             }
@@ -543,6 +572,8 @@ public class GridManager : MonoBehaviour
 
     private IEnumerator DestroyBlocksInSequence(List<GameObject> blocksToDestroy)
     {
+        riseSpeed = 0;
+
         foreach (var block in blocksToDestroy)
         {
             if (block != null)
@@ -563,6 +594,9 @@ public class GridManager : MonoBehaviour
                 Destroy(block);
             }
         }
-    }
 
+        // Una vez que todos los bloques han sido destruidos, permitimos que los bloques caigan
+        HandleBlockFall();
+
+    }
 }

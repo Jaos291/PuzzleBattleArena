@@ -349,6 +349,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 843410757}
+  - component: {fileID: 843410758}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -371,6 +372,19 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &843410758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 843410756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40fcca5319ff64e4896afe8843aa2dde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridManager: {fileID: 1345373939}
 --- !u!1 &1345373938
 GameObject:
   m_ObjectHideFlags: 0
@@ -412,7 +426,7 @@ MonoBehaviour:
   swipeDistanceThreshold: 0.5
   riseSpeed: 0.125
   maxVisibleRows: 10
-  fallDelay: 0.75
+  fallDelay: 0.3
   waitTime: 0.1
 --- !u!4 &1345373940
 Transform:
