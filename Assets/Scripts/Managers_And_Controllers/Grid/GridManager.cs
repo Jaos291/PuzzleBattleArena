@@ -256,23 +256,18 @@ public class GridManager : MonoBehaviour
             GameObject block1 = gridArray[block1Pos.x, block1Pos.y];
             GameObject block2 = gridArray[block2Pos.x, block2Pos.y];
 
-            if (block1 != null && block2 == null) // Si el cubo destino está vacío
+
+            if (block1 != null && block2 != null)
             {
-                // Mover el cubo origen a la posición destino
-                gridArray[block2Pos.x, block2Pos.y] = block1;
-                gridArray[block1Pos.x, block1Pos.y] = null;
-                block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
-                StartCoroutine(SmoothMove(block1, new Vector3(block2Pos.x, block2Pos.y + gridOffset, 0), 0.15f)); // Animar el movimiento
-                StartCoroutine(HandleBlockFall()); // Llamar a HandleBlockFall para que los bloques caigan
-            }
-            else if (block1 != null && block2 != null)
-            {
-                // Intercambiar los cubos
-                gridArray[block1Pos.x, block1Pos.y] = block2;
-                gridArray[block2Pos.x, block2Pos.y] = block1;
-                block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
-                block2.GetComponent<BlockController>().SetGridPosition(block1Pos);
-                StartCoroutine(SmoothSwap(block1, block2, block1Pos, block2Pos)); // Animar el intercambio
+                if (BlockIsUsable(block1) && BlockIsUsable(block2))
+                {
+                    // Intercambiar en el array
+                    gridArray[block1Pos.x, block1Pos.y] = block2;
+                    gridArray[block2Pos.x, block2Pos.y] = block1;
+
+                    // Empezamos la animación de intercambio
+                    StartCoroutine(SmoothSwap(block1, block2, block1Pos, block2Pos));
+                }
             }
         }
     }
@@ -322,27 +317,6 @@ public class GridManager : MonoBehaviour
 
         // Verificar si hay coincidencias después del intercambio
         StartCoroutine(CheckMatchesAndDestroy(block1Pos, block2Pos));
-    }
-
-
-    // Corrutina para mover bloques suavemente
-    IEnumerator SmoothMove(GameObject block, Vector3 targetPosition, float duration)
-    {
-        float elapsedTime = 0f;
-        Vector3 startPosition = block.transform.position;
-
-        while (elapsedTime < duration)
-        {
-            if (block != null)  // Verificamos que el bloque aún existe
-            {
-                block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
-            }
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-
-        // Asegurarnos de que el bloque llegue a la posición final
-        if (block != null) block.transform.position = targetPosition;
     }
 
     // Verifica si hay coincidencias y destruye bloques si las hay
@@ -461,6 +435,25 @@ public class GridManager : MonoBehaviour
     }
 
 
+    // Corrutina para mover bloques suavemente
+    IEnumerator SmoothMove(GameObject block, Vector3 targetPosition, float duration)
+    {
+        float elapsedTime = 0f;
+        Vector3 startPosition = block.transform.position;
+
+        while (elapsedTime < duration)
+        {
+            if (block != null)  // Verificamos que el bloque aún existe
+            {
+                block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
+            }
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // Asegurarnos de que el bloque llegue a la posición final
+        if (block != null) block.transform.position = targetPosition;
+    }
 
     IEnumerator SmoothFall(GameObject block, Vector3 targetPosition, float duration)
     {
