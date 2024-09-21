@@ -606,6 +606,8 @@ public class GridManager : MonoBehaviour
             }
         }
 
+        yield return new WaitForSeconds(cubesWaitTime * blocksToDestroy.Count);
+
         // Esperar un breve periodo antes de destruir los bloques
 
         // Destruir los bloques después del delay
