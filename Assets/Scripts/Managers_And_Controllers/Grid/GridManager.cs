@@ -409,14 +409,11 @@ public class GridManager : MonoBehaviour
 
             yield return new WaitForSeconds(fallDelay+0.2f);
 
-            riseSpeed = _riseSpeedHolder;
-
             // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
             if (hasFallingBlocks)
             {
                 StartCoroutine(CheckForNewMatchesAfterFall());
             }
-
         }
     }
 
@@ -456,7 +453,13 @@ public class GridManager : MonoBehaviour
         // Si encontramos nuevas coincidencias, hacemos que los bloques caigan de nuevo
         if (foundNewMatches)
         {
+            riseSpeed = 0;
+
             StartCoroutine(HandleBlockFall());
+        }
+        else
+        {
+            riseSpeed = _riseSpeedHolder;
         }
     }
 
@@ -595,6 +598,7 @@ public class GridManager : MonoBehaviour
         if (matchFound)
         {
             riseSpeed = 0;
+
             StartCoroutine(DestroyBlocksInSequence(blocksToDestroy));
         }
 
