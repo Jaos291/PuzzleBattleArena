@@ -5,14 +5,34 @@ using UnityEngine;
 public class SoundController : MonoBehaviour
 {
     [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip[] clips;
+
+    public List<AudioPair> audioPairs;  // Lista de pares de clips
 
     private void Start()
     {
-        int randomClip = Random.Range(0, clips.Length);
+        if (audioPairs.Count > 0)
+        {
+            int randomIndex = Random.Range(0, audioPairs.Count);
+            AudioPair randomPair = audioPairs[randomIndex];
 
-        audioSource.clip = clips[randomClip];
-        audioSource.playOnAwake = true;
-        audioSource.Play();
+            AudioClip normalTheme = randomPair.normalTheme;
+            AudioClip hurryTheme = randomPair.hurryTheme;
+
+            audioSource.clip = normalTheme;
+
+            audioSource.Play();
+
+            Debug.Log("Playing: " + audioSource.clip.name);
+
+            // Puedes hacer algo con los clips, como reproducirlos
+            // por ejemplo: AudioSource.PlayClipAtPoint(firstClipA, transform.position);
+        }
+    }
+
+    [System.Serializable]
+    public class AudioPair
+    {
+        public AudioClip normalTheme;  // Primer AudioClip
+        public AudioClip hurryTheme;  // Segundo AudioClip
     }
 }

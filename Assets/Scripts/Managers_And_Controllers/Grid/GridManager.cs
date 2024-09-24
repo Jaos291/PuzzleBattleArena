@@ -15,12 +15,15 @@ public class GridManager : MonoBehaviour
     private Vector2 startPos, endPos;
 
     public float riseSpeed = 0.125f; // Velocidad a la que sube el grid (0.125 unidades por segundo)
-    private float gridOffset = 0f;   // Desplazamiento actual de la cuadrícula
-    public int maxVisibleRows = 10;  // Número máximo de filas visibles en pantalla
-    public float fallDelay; // Retraso antes de que los bloques comiencen a caer
+    
+    public int maxVisibleRows = 10;  // Nï¿½mero mï¿½ximo de filas visibles en pantalla
+    
+    [Header("Tiempo de espera de cada cubo en desaparecer al encontrar un Match")]
     public float cubesWaitTime; // Retraso entre cada figura para desaparecer
     public float fallSpeed;
 
+    private float fallDelay; // Retraso antes de que los bloques comiencen a caer
+    private float gridOffset = 0f;   // Desplazamiento actual de la cuadrï¿½cula
     private float _riseSpeedHolder;
 
 
@@ -39,14 +42,14 @@ public class GridManager : MonoBehaviour
         {
             gridOffset += riseSpeed * Time.deltaTime;
 
-            // Si el offset llega a 1, entonces hemos subido una unidad completa y es momento de añadir una nueva línea
+            // Si el offset llega a 1, entonces hemos subido una unidad completa y es momento de aï¿½adir una nueva lï¿½nea
             if (gridOffset >= 1f)
             {
                 gridOffset = 0f;
                 AddNewLine();
             }
 
-            // Actualizar la posición de los bloques
+            // Actualizar la posiciï¿½n de los bloques
             UpdateBlockPositions();
         }
     }
@@ -58,13 +61,13 @@ public class GridManager : MonoBehaviour
         {
             if (gridArray[x, gridHeight - 1] != null)
             {
-                return true; // Si alguna celda en la fila superior está ocupada, llegamos al tope
+                return true; // Si alguna celda en la fila superior estï¿½ ocupada, llegamos al tope
             }
         }
         return false;
     }
 
-    // Actualiza la posición de todos los bloques según el offset del grid
+    // Actualiza la posiciï¿½n de todos los bloques segï¿½n el offset del grid
     void UpdateBlockPositions()
     {
         for (int x = 0; x < gridWidth; x++)
@@ -76,7 +79,7 @@ public class GridManager : MonoBehaviour
                     Vector3 newPosition = new Vector3(x, y + gridOffset, 0);
                     gridArray[x, y].transform.position = newPosition;
 
-                    // Si el bloque está en la fila 1 o más arriba, hacerlo usable
+                    // Si el bloque estï¿½ en la fila 1 o mï¿½s arriba, hacerlo usable
                     if (y + gridOffset >= 1 && !gridArray[x, y].GetComponent<BlockController>().IsUsable())
                     {
                         gridArray[x, y].GetComponent<BlockController>().SetUsable(true);
@@ -112,7 +115,7 @@ public class GridManager : MonoBehaviour
     }
 
 
-    // Genera la cuadrícula de bloques
+    // Genera la cuadrï¿½cula de bloques
     void GenerateGrid()
     {
         gridArray = new GameObject[gridWidth, gridHeight];
@@ -133,12 +136,12 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    // Obtiene un bloque aleatorio que evita generar 3 o más piezas idénticas juntas
+    // Obtiene un bloque aleatorio que evita generar 3 o mï¿½s piezas idï¿½nticas juntas
     GameObject GetRandomBlock(int x, int y)
     {
         List<GameObject> possibleBlocks = new List<GameObject>(blockPrefabs);
 
-        // Asegurarse de que no se generan 3 o más bloques iguales en fila
+        // Asegurarse de que no se generan 3 o mï¿½s bloques iguales en fila
         if (x > 1 && gridArray[x - 1, y] != null && gridArray[x - 2, y] != null)
         {
             Sprite prevBlock1Sprite = gridArray[x - 1, y].GetComponent<SpriteRenderer>().sprite;
@@ -150,7 +153,7 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        // Asegurarse de que no se generan 3 o más bloques iguales en columna
+        // Asegurarse de que no se generan 3 o mï¿½s bloques iguales en columna
         if (y > 1 && gridArray[x, y - 1] != null && gridArray[x, y - 2] != null)
         {
             Sprite prevBlock1Sprite = gridArray[x, y - 1].GetComponent<SpriteRenderer>().sprite;
@@ -166,7 +169,7 @@ public class GridManager : MonoBehaviour
         return possibleBlocks[Random.Range(0, possibleBlocks.Count)];
     }
 
-    // Manejador de entrada de ratón para clics y swipe
+    // Manejador de entrada de ratï¿½n para clics y swipe
     void HandleMouseInput()
     {
         if (Input.GetMouseButtonDown(0))
@@ -256,16 +259,16 @@ public class GridManager : MonoBehaviour
             GameObject block1 = gridArray[block1Pos.x, block1Pos.y];
             GameObject block2 = gridArray[block2Pos.x, block2Pos.y];
 
-            if (block1 != null && block2 == null) // Si el cubo destino está vacío
+            if (block1 != null && block2 == null) // Si el cubo destino estï¿½ vacï¿½o
             {
                 // Primero, movemos el bloque horizontalmente
                 gridArray[block2Pos.x, block2Pos.y] = block1;
                 gridArray[block1Pos.x, block1Pos.y] = null;
                 block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
 
-                // Animar el movimiento horizontal hacia la nueva posición
+                // Animar el movimiento horizontal hacia la nueva posiciï¿½n
                 StartCoroutine(SmoothMove(block1, new Vector3(block2Pos.x, block2Pos.y + gridOffset, 0), 0.15f, () => {
-                    // Después de moverse horizontalmente, verificamos si debe caer
+                    // Despuï¿½s de moverse horizontalmente, verificamos si debe caer
                     StartCoroutine(HandleBlockFall());
                 }));
             }
@@ -281,34 +284,19 @@ public class GridManager : MonoBehaviour
         }
     }
 
-
-    bool BlockIsUsable(GameObject block)
-    {
-        BlockController blockController = block.GetComponent<BlockController>();
-
-        bool canMove = false;
-
-        if (blockController.IsUsable())
-        {
-            canMove = true;
-        }
-
-        return canMove;
-    }
-
     // Corrutina para intercambiar bloques suavemente
     IEnumerator SmoothSwap(GameObject block1, GameObject block2, Vector2Int block1Pos, Vector2Int block2Pos)
     {
         float elapsedTime = 0f;
-        float duration = 0.15f;  // Duración de la animación
+        float duration = 0.15f;  // Duraciï¿½n de la animaciï¿½n
 
         Vector3 startPos1 = block1.transform.position;
         Vector3 startPos2 = block2.transform.position;
 
-        // Animación de intercambio suave
+        // Animaciï¿½n de intercambio suave
         while (elapsedTime < duration)
         {
-            if (block1 != null && block2 != null)  // Verificamos que ambos bloques aún existen
+            if (block1 != null && block2 != null)  // Verificamos que ambos bloques aï¿½n existen
             {
                 block1.transform.position = Vector3.Lerp(startPos1, startPos2, elapsedTime / duration);
                 block2.transform.position = Vector3.Lerp(startPos2, startPos1, elapsedTime / duration);
@@ -317,15 +305,15 @@ public class GridManager : MonoBehaviour
             yield return null;
         }
 
-        // Asegurarnos de que ambos bloques lleguen a la posición final
+        // Asegurarnos de que ambos bloques lleguen a la posiciï¿½n final
         if (block1 != null) block1.transform.position = startPos2;
         if (block2 != null) block2.transform.position = startPos1;
 
-        // Actualizar las posiciones en la cuadrícula
+        // Actualizar las posiciones en la cuadrï¿½cula
         if (block1 != null) block1.GetComponent<BlockController>().SetGridPosition(block2Pos);
         if (block2 != null) block2.GetComponent<BlockController>().SetGridPosition(block1Pos);
 
-        // Verificar si hay coincidencias después del intercambio
+        // Verificar si hay coincidencias despuï¿½s del intercambio
         StartCoroutine(CheckMatchesAndDestroy(block1Pos, block2Pos));
     }
 
@@ -339,7 +327,7 @@ public class GridManager : MonoBehaviour
 
         while (elapsedTime < duration)
         {
-            if (block != null)  // Verificamos que el bloque aún existe
+            if (block != null)  // Verificamos que el bloque aï¿½n existe
             {
                 block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
             }
@@ -347,10 +335,10 @@ public class GridManager : MonoBehaviour
             yield return null;
         }
 
-        // Asegurarnos de que el bloque llegue a la posición final
+        // Asegurarnos de que el bloque llegue a la posiciï¿½n final
         if (block != null) block.transform.position = targetPosition;
 
-        // Llamar a la función de callback si se proporciona
+        // Llamar a la funciï¿½n de callback si se proporciona
         onComplete?.Invoke();
     }
 
@@ -360,7 +348,7 @@ public class GridManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.1f);
 
-        // Verificar si aún existen los bloques antes de intentar operar con ellos
+        // Verificar si aï¿½n existen los bloques antes de intentar operar con ellos
         GameObject block1 = gridArray[pos1.x, pos1.y];
         GameObject block2 = gridArray[pos2.x, pos2.y];
 
@@ -369,16 +357,18 @@ public class GridManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.2f);  // Esperamos un poco para que se vea mejor
 
-        // Verificar si aún existen los bloques antes de intentar operar con ellos
+        // Verificar si aï¿½n existen los bloques antes de intentar operar con ellos
         if (block1 != null) block1.GetComponent<BlockController>().SetGridPosition(pos1);
         if (block2 != null) block2.GetComponent<BlockController>().SetGridPosition(pos2);
 
-        StartCoroutine(HandleBlockFall());  // Hacer que los bloques caigan si hay espacio vacío debajo
+        //StartCoroutine(HandleBlockFall());  // Hacer que los bloques caigan si hay espacio vacï¿½o debajo
     }
 
-    // Hacer que los bloques caigan si hay espacio vacío debajo
+    // Hacer que los bloques caigan si hay espacio vacï¿½o debajo
     IEnumerator HandleBlockFall(List<GameObject> blocksToDestroy = null)
     {
+        riseSpeed = 0;
+
         if (blocksToDestroy != null)
         {
             StartCoroutine(HandleBlockFallAfterDestruction(blocksToDestroy));
@@ -395,13 +385,13 @@ public class GridManager : MonoBehaviour
                     {
                         int dropDistance = 0;
 
-                        // Contamos cuántos espacios vacíos hay debajo
+                        // Contamos cuï¿½ntos espacios vacï¿½os hay debajo
                         while (y - dropDistance - 1 >= 0 && gridArray[x, y - dropDistance - 1] == null)
                         {
                             dropDistance++;
                         }
 
-                        // Si hay un espacio vacío, hacemos que el bloque caiga
+                        // Si hay un espacio vacï¿½o, hacemos que el bloque caiga
                         if (dropDistance > 0)
                         {
                             GameObject block = gridArray[x, y];
@@ -419,7 +409,9 @@ public class GridManager : MonoBehaviour
 
             yield return new WaitForSeconds(fallDelay+0.2f);
 
-            // Si hubo bloques que cayeron, verificamos nuevas coincidencias después de que caigan
+            riseSpeed = _riseSpeedHolder;
+
+            // Si hubo bloques que cayeron, verificamos nuevas coincidencias despuï¿½s de que caigan
             if (hasFallingBlocks)
             {
                 StartCoroutine(CheckForNewMatchesAfterFall());
@@ -429,23 +421,23 @@ public class GridManager : MonoBehaviour
 
     private IEnumerator HandleBlockFallAfterDestruction(List<GameObject> blocksToDestroy)
     {
-        // Esperamos a que todos los bloques se destruyan antes de permitir que caigan los superiores
-        yield return new WaitForSeconds(fallDelay /** blocksToDestroy.Count*/);  // Aseguramos que esperamos el tiempo adecuado para la destrucción secuencial
+    // Wait for a little time before allowing blocks to fall
+    yield return new WaitForSeconds(fallDelay * blocksToDestroy.Count);
 
-        // Luego llamamos al código que maneja la caída de bloques
-        StartCoroutine(HandleBlockFall());
+    // Now that all blocks have been destroyed and the delay has passed, allow them to fall
+    StartCoroutine(HandleBlockFall());
     }
 
 
 
     IEnumerator CheckForNewMatchesAfterFall()
     {
-        // Esperamos a que termine el movimiento de caída
+        // Esperamos a que termine el movimiento de caï¿½da
         yield return new WaitForSeconds(0.2f);
 
         bool foundNewMatches = false;
 
-        // Recorremos toda la cuadrícula para verificar coincidencias después de que los bloques cayeron
+        // Recorremos toda la cuadrï¿½cula para verificar coincidencias despuï¿½s de que los bloques cayeron
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)
@@ -476,7 +468,7 @@ public class GridManager : MonoBehaviour
 
         while (elapsedTime < duration)
         {
-            if (block != null)  // Verificamos que el bloque aún existe
+            if (block != null)  // Verificamos que el bloque aï¿½n existe
             {
                 block.transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / duration);
             }
@@ -484,12 +476,12 @@ public class GridManager : MonoBehaviour
             yield return null;
         }
 
-        // Asegurarnos de que el bloque llegue a la posición final
+        // Asegurarnos de que el bloque llegue a la posiciï¿½n final
         if (block != null) block.transform.position = targetPosition;
     }
 
 
-    // Verifica si una posición es válida dentro de la cuadrícula
+    // Verifica si una posiciï¿½n es vï¿½lida dentro de la cuadrï¿½cula
     bool IsValidPosition(Vector2Int pos)
     {
         return pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight;
@@ -566,7 +558,7 @@ public class GridManager : MonoBehaviour
 
         bool matchFound = false;
 
-        // Si hay 3 o más coincidencias horizontales o verticales, marcar los bloques para desaparecer
+        // Si hay 3 o mï¿½s coincidencias horizontales o verticales, marcar los bloques para desaparecer
         List<GameObject> blocksToDestroy = new List<GameObject>();
 
         if (horizontalMatches.Count >= 3)
@@ -609,36 +601,22 @@ public class GridManager : MonoBehaviour
 
     private IEnumerator DestroyBlocksInSequence(List<GameObject> blocksToDestroy)
     {
+        // Set riseSpeed to 0 to prevent blocks from rising while being destroyed
+        riseSpeed = 0;
+
+        // Destroy all blocks with a delay between each one
         foreach (var block in blocksToDestroy)
         {
+            yield return new WaitForSeconds(cubesWaitTime/ (blocksToDestroy.Count));
             if (block != null)
             {
-                // Apagar el sprite antes de destruir
-                block.GetComponent<SpriteRenderer>().enabled = false;
-                yield return new WaitForSeconds(cubesWaitTime);
+                Destroy(block);  // Eliminamos el bloque del juego
             }
+            yield return new WaitForSeconds(cubesWaitTime);  // Esperamos un poco antes de destruir el siguiente bloque
         }
 
-        yield return new WaitForSeconds(cubesWaitTime * blocksToDestroy.Count);
-
-        // Esperar un breve periodo antes de destruir los bloques
-
-        // Destruir los bloques después del delay
-        foreach (var block in blocksToDestroy)
-        {
-            if (block != null)
-            {
-                Destroy(block);
-            }
-        }
-
-        // Esperar a que todos los bloques hayan sido destruidos antes de permitir que los bloques caigan
-        while (blocksToDestroy.Any(block => block != null))
-        {
-            yield return null;
-        }
-
-        // Una vez que todos los bloques han sido destruidos, permitimos que los bloques caigan
+        // Now that all blocks are destroyed, allow them to fall
         StartCoroutine(HandleBlockFall());
     }
+
 }
