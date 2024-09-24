@@ -13,6 +13,8 @@ public class BlockController : MonoBehaviour
     private bool isUsable = true; // Los bloques por defecto serán usables al inicio
     private SpriteRenderer spriteRenderer;
 
+    public bool IsBusy = false;
+
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -84,5 +86,10 @@ public class BlockController : MonoBehaviour
     public bool IsDissapearing()
     {
         return isDissapearing;
+    }
+
+    public void SetBusy(bool status)
+    {
+        IsBusy = status;
     }
 }

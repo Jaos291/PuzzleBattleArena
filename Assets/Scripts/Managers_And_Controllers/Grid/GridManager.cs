@@ -22,9 +22,13 @@ public class GridManager : MonoBehaviour
     public float cubesWaitTime; // Retraso entre cada figura para desaparecer
     public float fallSpeed;
 
-    private float fallDelay; // Retraso antes de que los bloques comiencen a caer
+    private float fallDelay = 0.2f; // Retraso antes de que los bloques comiencen a caer
     private float gridOffset = 0f;   // Desplazamiento actual de la cuadr�cula
     private float _riseSpeedHolder;
+
+    private bool isFalling = false; // Indicates if blocks are currently falling
+    private bool isProcessingMatches = false; // Indicates if matches are being processed
+
 
 
     void Start()
@@ -369,8 +373,11 @@ public class GridManager : MonoBehaviour
     {
         riseSpeed = 0;
 
+        yield return new WaitForSeconds(0.2f);
+
         if (blocksToDestroy != null)
         {
+            fallDelay = fallDelay * blocksToDestroy.Count;
             StartCoroutine(HandleBlockFallAfterDestruction(blocksToDestroy));
         }
         else
@@ -407,7 +414,7 @@ public class GridManager : MonoBehaviour
                 }
             }
 
-            yield return new WaitForSeconds(fallDelay+0.2f);
+            yield return new WaitForSeconds(fallDelay);
 
             riseSpeed = _riseSpeedHolder;
 
@@ -422,7 +429,7 @@ public class GridManager : MonoBehaviour
     private IEnumerator HandleBlockFallAfterDestruction(List<GameObject> blocksToDestroy)
     {
     // Wait for a little time before allowing blocks to fall
-    yield return new WaitForSeconds(fallDelay * blocksToDestroy.Count);
+    yield return new WaitForSeconds(fallDelay);
 
     // Now that all blocks have been destroyed and the delay has passed, allow them to fall
     StartCoroutine(HandleBlockFall());
@@ -604,19 +611,29 @@ public class GridManager : MonoBehaviour
         // Set riseSpeed to 0 to prevent blocks from rising while being destroyed
         riseSpeed = 0;
 
-        // Destroy all blocks with a delay between each one
-        foreach (var block in blocksToDestroy)
-        {
-            yield return new WaitForSeconds(cubesWaitTime/ (blocksToDestroy.Count));
-            if (block != null)
-            {
-                Destroy(block);  // Eliminamos el bloque del juego
-            }
-            yield return new WaitForSeconds(cubesWaitTime);  // Esperamos un poco antes de destruir el siguiente bloque
-        }
+        StartCoroutine(DestroyBlocks(blocksToDestroy));
+
+        // Wait for a little time before allowing blocks to fall
+        yield return new WaitForSeconds(fallDelay + blocksToDestroy.Count * cubesWaitTime);
 
         // Now that all blocks are destroyed, allow them to fall
         StartCoroutine(HandleBlockFall());
+
+        // Wait for a little time before restoring the original riseSpeed
+        yield return new WaitForSeconds(0.2f);
     }
+
+    private IEnumerator DestroyBlocks(List<GameObject> blocksToDestroy)
+{
+    // Destroy all blocks with a delay between each one
+    foreach (var block in blocksToDestroy)
+    {
+        if (block != null)
+        {
+            Destroy(block);  // Eliminamos el bloque del juego
+        }
+        yield return new WaitForSeconds(cubesWaitTime);  // Esperamos un poco antes de destruir el siguiente bloque
+    }
+}
 
 }
