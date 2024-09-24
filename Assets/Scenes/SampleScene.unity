@@ -578,17 +578,18 @@ MonoBehaviour:
   gridWidth: 6
   gridHeight: 12
   blockPrefabs:
-  - {fileID: 2161715806340692557, guid: afd58fa052a35f84294f389e7b24555a, type: 3}
-  - {fileID: 2161715806340692557, guid: c3ca624c1f858714e87984af93889acf, type: 3}
-  - {fileID: 2161715806340692557, guid: 498f356cb35226b47980992ddca8fef4, type: 3}
-  - {fileID: 2161715806340692557, guid: e6b161188e12ec34781627712cd98140, type: 3}
-  - {fileID: 2161715806340692557, guid: 97d8be0b3c2fd3346b530c85b4b3e855, type: 3}
-  - {fileID: 2161715806340692557, guid: 8c3530a7584ec0a489243c7b5bbb4bec, type: 3}
+  - {fileID: 6387830801589291647, guid: 522b424894113b140ac11cf46fc73363, type: 3}
+  - {fileID: 6387830801589291647, guid: 47b085fc4ccc8024b911dd32ceb5e9a6, type: 3}
+  - {fileID: 6387830801589291647, guid: fadeb715cf425a94281f99e909f53542, type: 3}
+  - {fileID: 6387830801589291647, guid: 4392e8b7d7d8f1647941312ccad021e4, type: 3}
+  - {fileID: 6387830801589291647, guid: 5773fc068271e3948850637ce5c0295b, type: 3}
+  - {fileID: 6387830801589291647, guid: c6acf5d6fbece9945a1580dde094e930, type: 3}
   swipeDistanceThreshold: 0.5
   riseSpeed: 0.375
   maxVisibleRows: 10
   cubesWaitTime: 0.1
   fallSpeed: 0.25
+  fallDelay: 0.1
 --- !u!4 &1345373940
 Transform:
   m_ObjectHideFlags: 0

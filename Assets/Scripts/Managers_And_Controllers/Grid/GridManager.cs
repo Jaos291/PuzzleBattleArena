@@ -22,7 +22,7 @@ public class GridManager : MonoBehaviour
     public float cubesWaitTime; // Retraso entre cada figura para desaparecer
     public float fallSpeed;
 
-    private float fallDelay = 0.2f; // Retraso antes de que los bloques comiencen a caer
+    public float fallDelay; // Retraso antes de que los bloques comiencen a caer
     private float gridOffset = 0f;   // Desplazamiento actual de la cuadr�cula
     private float _riseSpeedHolder;
 
@@ -184,6 +184,7 @@ public class GridManager : MonoBehaviour
             if (hit.collider != null)
             {
                 GameObject clickedBlock = hit.collider.gameObject;
+                Debug.Log("Hit");
 
                 if (selectedBlock == null)
                 {

@@ -4,8 +4,9 @@ using UnityEngine;
 
 public class BlockController : MonoBehaviour
 {
-    public enum BlockType { Red, Blue, Green, Yellow, Purple, White }; // Diferentes tipos de bloques
+    public enum BlockType { Pink, Blue, Green, Orange, Purple, White }; // Diferentes tipos de bloques
     public BlockType blockType; // Tipo de bloque
+    public BoxCollider2D[] boxColliders;
 
     private Vector2Int gridPosition;
     private bool isDissapearing = false;
